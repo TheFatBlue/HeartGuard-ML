@@ -46,7 +46,7 @@ data/processed/*
 
 # Model files and output
 output/
-models/
+#models/
 *.pkl
 *.joblib
 *.h5
