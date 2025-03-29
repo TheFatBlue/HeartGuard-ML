@@ -82,7 +82,7 @@ heart_disease_prediction/
 ### Running the Full Pipeline
 
 ```bash
-python main.py --data_path data/raw/heart_disease_data.csv --use_smote
+python main.py --data_path data/raw/heart_disease.csv --use_smote
 ```
 
 Options:
