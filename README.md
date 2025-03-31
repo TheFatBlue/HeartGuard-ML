@@ -24,7 +24,7 @@ heart_disease_prediction/
 │
 ├── data/
 │   ├── raw/
-│   │   └── heart_disease_data.csv
+│   │   └── heart_disease.csv
 │   └── processed/
 │       └── heart_disease_cleaned.csv
 │

@@ -8,7 +8,7 @@ from pathlib import Path
 # Project paths
 ROOT_DIR = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = ROOT_DIR / "data"
-RAW_DATA_PATH = DATA_DIR / "raw" / "heart_disease_data.csv"
+RAW_DATA_PATH = DATA_DIR / "raw" / "heart_disease.csv"
 PROCESSED_DATA_PATH = DATA_DIR / "processed" / "heart_disease_cleaned.csv"
 
 # Data preprocessing

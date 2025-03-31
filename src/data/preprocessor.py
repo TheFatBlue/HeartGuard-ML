@@ -10,6 +10,8 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 import logging
 
+from .imputation import _simple_imputation, _knn_imputation, _mice_imputation, _indicator_imputation, _advanced_imputation
+
 logger = logging.getLogger(__name__)
 
 def check_data_quality(data):
@@ -49,19 +51,27 @@ def check_data_quality(data):
         
     return summary
 
-def clean_data(data):
+def clean_data(data, method='advanced'):
     """
-    Clean the dataset by handling duplicates and converting data types.
+    Clean the dataset by handling duplicates, converting data types,
+    and applying sophisticated missing data handling techniques.
     
     Parameters:
     -----------
     data : pandas.DataFrame
         The input dataset
+    method : str, default='advanced'
+        Method for handling missing values:
+        - 'simple': Mean/median/mode imputation
+        - 'knn': K-Nearest Neighbors imputation
+        - 'mice': Multiple Imputation by Chained Equations
+        - 'indicator': Add missing indicator variables 
+        - 'advanced': Combination of methods based on data characteristics
         
     Returns:
     --------
     pandas.DataFrame
-        Cleaned dataset
+        Cleaned dataset with handled missing values
     """
     logger.info("Cleaning data")
     
@@ -79,13 +89,19 @@ def clean_data(data):
         cleaned_data["Heart Disease Status"] = cleaned_data["Heart Disease Status"].map({"Yes": 1, "No": 0})
         logger.info("Converted target variable to binary (1/0)")
     
-    # Handle missing values in numerical features with median imputation
-    # This is a simple approach; a more sophisticated approach could be used later
-    for col in cleaned_data.select_dtypes(include=np.number).columns:
-        if cleaned_data[col].isnull().any():
-            median_value = cleaned_data[col].median()
-            cleaned_data[col] = cleaned_data[col].fillna(median_value)
-            logger.info(f"Imputed missing values in '{col}' with median ({median_value})")
+    # Handle missing values based on the chosen method
+    if method == 'simple':
+        cleaned_data = _simple_imputation(cleaned_data)
+    elif method == 'knn':
+        cleaned_data = _knn_imputation(cleaned_data)
+    elif method == 'mice':
+        cleaned_data = _mice_imputation(cleaned_data)
+    elif method == 'indicator':
+        cleaned_data = _indicator_imputation(cleaned_data)
+    elif method == 'advanced':
+        cleaned_data = _advanced_imputation(cleaned_data)
+    else:
+        raise ValueError(f"Unknown imputation method: {method}")
     
     return cleaned_data
 

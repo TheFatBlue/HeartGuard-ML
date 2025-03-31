@@ -9,3 +9,4 @@ jupyter>=1.0.0
 notebook>=6.4.0
 ipywidgets>=7.6.0
 tqdm>=4.62.0
+kagglehub
