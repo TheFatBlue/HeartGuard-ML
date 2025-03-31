@@ -78,6 +78,11 @@ heart_disease_prediction/
    uv pip install -r requirements.txt
    ```
 
+4. Download the dataset
+   ```
+   python src/data/download.py
+   ```
+
 ## Usage
 
 ### Running the Full Pipeline
