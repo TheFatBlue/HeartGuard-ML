@@ -67,14 +67,15 @@ heart_disease_prediction/
 ## Installation
 
 1. Clone this repository
-2. Create a virtual environment (recommended)
+2. Create a conda environment (recommended)
    ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   conda create -n hgml python=3.11
+   conda activate hgml
    ```
 3. Install dependencies
    ```
-   pip install -r requirements.txt
+   pip install uv
+   uv pip install -r requirements.txt
    ```
 
 ## Usage
