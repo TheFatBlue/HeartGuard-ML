@@ -50,12 +50,21 @@ def tune_logistic_regression(X_train, y_train, cv=5, class_weight='balanced'):
     """
     logger.info("Tuning logistic regression hyperparameters")
     
+    # Check if X_train is pandas DataFrame and convert to numpy array
+    if isinstance(X_train, pd.DataFrame):
+        # Check for any remaining object columns
+        object_cols = X_train.select_dtypes(include=['object']).columns
+        if len(object_cols) > 0:
+            logger.warning(f"Found object columns that need encoding: {object_cols.tolist()}")
+            # One-hot encode any remaining object columns
+            X_train = pd.get_dummies(X_train, columns=object_cols, drop_first=True)
+        X_train = X_train.values
+    
     # Define parameter grid
     param_grid = {
         'C': [0.001, 0.01, 0.1, 1, 10, 100],
-        'penalty': ['l1', 'l2', 'elasticnet'],
-        'solver': ['saga'],  # saga supports all penalties
-        'l1_ratio': [0.1, 0.5, 0.9],  # only used with elasticnet
+        'penalty': ['l2'],  # Simplified to avoid solver compatibility issues
+        'solver': ['liblinear'],  # liblinear works well with small datasets
         'max_iter': [1000],
         'class_weight': [class_weight]
     }
@@ -66,29 +75,42 @@ def tune_logistic_regression(X_train, y_train, cv=5, class_weight='balanced'):
     # Define the cross-validation strategy
     cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
     
-    # Create the grid search
-    grid_search = GridSearchCV(
-        estimator=lr,
-        param_grid=param_grid,
-        cv=cv_strategy,
-        scoring=create_recall_scorer(),
-        refit='recall',  # Optimize for recall
-        n_jobs=-1,
-        verbose=1
-    )
+    try:
+        # Create the grid search
+        grid_search = GridSearchCV(
+            estimator=lr,
+            param_grid=param_grid,
+            cv=cv_strategy,
+            scoring=create_recall_scorer(),
+            refit='recall',  # Optimize for recall
+            n_jobs=-1,
+            verbose=1
+        )
+        
+        # Fit the grid search
+        grid_search.fit(X_train, y_train)
+        
+        # Get best model
+        best_model = grid_search.best_estimator_
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+        
+        logger.info(f"Best logistic regression parameters: {best_params}")
+        logger.info(f"Best recall score: {best_score:.4f}")
+        
+        return best_model
     
-    # Fit the grid search
-    grid_search.fit(X_train, y_train)
-    
-    # Get best model
-    best_model = grid_search.best_estimator_
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
-    
-    logger.info(f"Best logistic regression parameters: {best_params}")
-    logger.info(f"Best recall score: {best_score:.4f}")
-    
-    return best_model
+    except Exception as e:
+        logger.error(f"Error during logistic regression tuning: {e}")
+        # Fallback to a simple model with default hyperparameters
+        fallback_model = LogisticRegression(
+            class_weight=class_weight,
+            random_state=42,
+            max_iter=1000
+        )
+        fallback_model.fit(X_train, y_train)
+        logger.info("Using fallback logistic regression model")
+        return fallback_model
 
 def tune_random_forest(X_train, y_train, cv=5, class_weight='balanced'):
     """
@@ -112,6 +134,16 @@ def tune_random_forest(X_train, y_train, cv=5, class_weight='balanced'):
     """
     logger.info("Tuning random forest hyperparameters")
     
+    # Check if X_train is pandas DataFrame and convert to numpy array
+    if isinstance(X_train, pd.DataFrame):
+        # Check for any remaining object columns
+        object_cols = X_train.select_dtypes(include=['object']).columns
+        if len(object_cols) > 0:
+            logger.warning(f"Found object columns that need encoding: {object_cols.tolist()}")
+            # One-hot encode any remaining object columns
+            X_train = pd.get_dummies(X_train, columns=object_cols, drop_first=True)
+        X_train = X_train.values
+    
     # Define parameter grid
     param_grid = {
         'n_estimators': [100, 200, 300],
@@ -129,31 +161,44 @@ def tune_random_forest(X_train, y_train, cv=5, class_weight='balanced'):
     # Define the cross-validation strategy
     cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
     
-    # Create the grid search
-    grid_search = RandomizedSearchCV(
-        estimator=rf,
-        param_distributions=param_grid,
-        n_iter=20,  # Number of parameter settings sampled
-        cv=cv_strategy,
-        scoring=create_recall_scorer(),
-        refit='recall',  # Optimize for recall
-        n_jobs=-1,
-        random_state=42,
-        verbose=1
-    )
+    try:
+        # Create the grid search - using RandomizedSearchCV to save time
+        grid_search = RandomizedSearchCV(
+            estimator=rf,
+            param_distributions=param_grid,
+            n_iter=20,  # Number of parameter settings sampled
+            cv=cv_strategy,
+            scoring=create_recall_scorer(),
+            refit='recall',  # Optimize for recall
+            n_jobs=-1,
+            random_state=42,
+            verbose=1
+        )
+        
+        # Fit the grid search
+        grid_search.fit(X_train, y_train)
+        
+        # Get best model
+        best_model = grid_search.best_estimator_
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+        
+        logger.info(f"Best random forest parameters: {best_params}")
+        logger.info(f"Best recall score: {best_score:.4f}")
+        
+        return best_model
     
-    # Fit the grid search
-    grid_search.fit(X_train, y_train)
-    
-    # Get best model
-    best_model = grid_search.best_estimator_
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
-    
-    logger.info(f"Best random forest parameters: {best_params}")
-    logger.info(f"Best recall score: {best_score:.4f}")
-    
-    return best_model
+    except Exception as e:
+        logger.error(f"Error during random forest tuning: {e}")
+        # Fallback to a simple model with default hyperparameters
+        fallback_model = RandomForestClassifier(
+            n_estimators=100,
+            class_weight=class_weight,
+            random_state=42
+        )
+        fallback_model.fit(X_train, y_train)
+        logger.info("Using fallback random forest model")
+        return fallback_model
 
 def tune_xgboost(X_train, y_train, cv=5):
     """
@@ -174,6 +219,16 @@ def tune_xgboost(X_train, y_train, cv=5):
         Best XGBoost model
     """
     logger.info("Tuning XGBoost hyperparameters")
+    
+    # Check if X_train is pandas DataFrame and convert to numpy array
+    if isinstance(X_train, pd.DataFrame):
+        # Check for any remaining object columns
+        object_cols = X_train.select_dtypes(include=['object']).columns
+        if len(object_cols) > 0:
+            logger.warning(f"Found object columns that need encoding: {object_cols.tolist()}")
+            # One-hot encode any remaining object columns
+            X_train = pd.get_dummies(X_train, columns=object_cols, drop_first=True)
+        X_train = X_train.values
     
     # Calculate scale_pos_weight for imbalanced dataset
     if isinstance(y_train, pd.Series):
@@ -199,42 +254,56 @@ def tune_xgboost(X_train, y_train, cv=5):
         'scale_pos_weight': [scale_pos_weight]
     }
     
-    # Create base model
-    xgb = XGBClassifier(
-        objective='binary:logistic',
-        eval_metric='auc',
-        random_state=42,
-        use_label_encoder=False
-    )
+    try:
+        # Create base model with verbosity turned off to reduce output
+        xgb = XGBClassifier(
+            objective='binary:logistic',
+            eval_metric='auc',
+            random_state=42,
+            verbosity=0
+        )
+        
+        # Define the cross-validation strategy
+        cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
+        
+        # Create the grid search
+        grid_search = RandomizedSearchCV(
+            estimator=xgb,
+            param_distributions=param_grid,
+            n_iter=20,  # Number of parameter settings sampled
+            cv=cv_strategy,
+            scoring=create_recall_scorer(),
+            refit='recall',  # Optimize for recall
+            n_jobs=-1,
+            random_state=42,
+            verbose=1
+        )
+        
+        # Fit the grid search
+        grid_search.fit(X_train, y_train)
+        
+        # Get best model
+        best_model = grid_search.best_estimator_
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+        
+        logger.info(f"Best XGBoost parameters: {best_params}")
+        logger.info(f"Best recall score: {best_score:.4f}")
+        
+        return best_model
     
-    # Define the cross-validation strategy
-    cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
-    
-    # Create the grid search
-    grid_search = RandomizedSearchCV(
-        estimator=xgb,
-        param_distributions=param_grid,
-        n_iter=20,  # Number of parameter settings sampled
-        cv=cv_strategy,
-        scoring=create_recall_scorer(),
-        refit='recall',  # Optimize for recall
-        n_jobs=-1,
-        random_state=42,
-        verbose=1
-    )
-    
-    # Fit the grid search
-    grid_search.fit(X_train, y_train)
-    
-    # Get best model
-    best_model = grid_search.best_estimator_
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
-    
-    logger.info(f"Best XGBoost parameters: {best_params}")
-    logger.info(f"Best recall score: {best_score:.4f}")
-    
-    return best_model
+    except Exception as e:
+        logger.error(f"Error during XGBoost tuning: {e}")
+        # Fallback to a simple model with default hyperparameters
+        fallback_model = XGBClassifier(
+            n_estimators=100,
+            scale_pos_weight=scale_pos_weight,
+            random_state=42,
+            verbosity=0
+        )
+        fallback_model.fit(X_train, y_train)
+        logger.info("Using fallback XGBoost model")
+        return fallback_model
 
 def tune_gradient_boosting(X_train, y_train, cv=5):
     """
@@ -256,6 +325,16 @@ def tune_gradient_boosting(X_train, y_train, cv=5):
     """
     logger.info("Tuning Gradient Boosting hyperparameters")
     
+    # Check if X_train is pandas DataFrame and convert to numpy array
+    if isinstance(X_train, pd.DataFrame):
+        # Check for any remaining object columns
+        object_cols = X_train.select_dtypes(include=['object']).columns
+        if len(object_cols) > 0:
+            logger.warning(f"Found object columns that need encoding: {object_cols.tolist()}")
+            # One-hot encode any remaining object columns
+            X_train = pd.get_dummies(X_train, columns=object_cols, drop_first=True)
+        X_train = X_train.values
+    
     # Define parameter grid
     param_grid = {
         'n_estimators': [100, 200, 300],
@@ -267,34 +346,46 @@ def tune_gradient_boosting(X_train, y_train, cv=5):
         'max_features': ['sqrt', 'log2', None]
     }
     
-    # Create base model
-    gb = GradientBoostingClassifier(random_state=42)
+    try:
+        # Create base model
+        gb = GradientBoostingClassifier(random_state=42)
+        
+        # Define the cross-validation strategy
+        cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
+        
+        # Create the grid search
+        grid_search = RandomizedSearchCV(
+            estimator=gb,
+            param_distributions=param_grid,
+            n_iter=20,  # Number of parameter settings sampled
+            cv=cv_strategy,
+            scoring=create_recall_scorer(),
+            refit='recall',  # Optimize for recall
+            n_jobs=-1,
+            random_state=42,
+            verbose=1
+        )
+        
+        # Fit the grid search
+        grid_search.fit(X_train, y_train)
+        
+        # Get best model
+        best_model = grid_search.best_estimator_
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+        
+        logger.info(f"Best Gradient Boosting parameters: {best_params}")
+        logger.info(f"Best recall score: {best_score:.4f}")
+        
+        return best_model
     
-    # Define the cross-validation strategy
-    cv_strategy = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
-    
-    # Create the grid search
-    grid_search = RandomizedSearchCV(
-        estimator=gb,
-        param_distributions=param_grid,
-        n_iter=20,  # Number of parameter settings sampled
-        cv=cv_strategy,
-        scoring=create_recall_scorer(),
-        refit='recall',  # Optimize for recall
-        n_jobs=-1,
-        random_state=42,
-        verbose=1
-    )
-    
-    # Fit the grid search
-    grid_search.fit(X_train, y_train)
-    
-    # Get best model
-    best_model = grid_search.best_estimator_
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
-    
-    logger.info(f"Best Gradient Boosting parameters: {best_params}")
-    logger.info(f"Best recall score: {best_score:.4f}")
-    
-    return best_model
+    except Exception as e:
+        logger.error(f"Error during Gradient Boosting tuning: {e}")
+        # Fallback to a simple model with default hyperparameters
+        fallback_model = GradientBoostingClassifier(
+            n_estimators=100,
+            random_state=42
+        )
+        fallback_model.fit(X_train, y_train)
+        logger.info("Using fallback Gradient Boosting model")
+        return fallback_model

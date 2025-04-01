@@ -302,6 +302,8 @@ def select_features_with_rfe(X, y, estimator=None, cv=5, step=1, min_features_to
     pandas.DataFrame
         DataFrame with selected features
     """
+    print(min_features_to_select)
+    min_features_to_select=5
     logger.info("Selecting features with RFE and cross-validation")
     
     # Create estimator if not provided
@@ -332,3 +334,41 @@ def select_features_with_rfe(X, y, estimator=None, cv=5, step=1, min_features_to
     except Exception as e:
         logger.error(f"RFE feature selection failed: {e}")
         return X
+    
+def create_interaction_features(data):
+    """
+    Create interaction features that might be relevant for heart disease prediction.
+    
+    Parameters:
+    -----------
+    data : pandas.DataFrame
+        Input data
+        
+    Returns:
+    --------
+    pandas.DataFrame
+        Data with additional interaction features
+    """
+    logger.info("Creating interaction features")
+    
+    # Make a copy of the data
+    enhanced_data = data.copy()
+    
+    # Only create interactions between numerical features
+    numerical_features = enhanced_data.select_dtypes(include=[np.number]).columns.tolist()
+    
+    # Age and Blood Pressure interaction (if both exist as numerical features)
+    if 'Age' in numerical_features and 'Blood Pressure' in numerical_features:
+        enhanced_data['age_bp_interaction'] = enhanced_data['Age'] * enhanced_data['Blood Pressure'] / 100
+        logger.info("Created Age x Blood Pressure interaction feature")
+    
+    # BMI and Cholesterol interaction (if both exist as numerical features)
+    if 'BMI' in numerical_features and 'Cholesterol Level' in numerical_features:
+        enhanced_data['bmi_cholesterol_interaction'] = enhanced_data['BMI'] * enhanced_data['Cholesterol Level'] / 100
+        logger.info("Created BMI x Cholesterol interaction feature")
+    
+    # Track how many new features we've created
+    new_features = len(enhanced_data.columns) - len(data.columns)
+    logger.info(f"Created {new_features} new interaction features")
+    
+    return enhanced_data

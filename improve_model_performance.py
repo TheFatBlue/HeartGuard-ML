@@ -124,6 +124,61 @@ def main():
     # Step 2: Feature Engineering
     logger.info("STEP 2: Feature Engineering")
     
+    # Create preprocessing pipeline for categorical features
+    logger.info("Creating preprocessing pipeline for categorical features")
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+    # Identify categorical columns in the data
+    categorical_cols = []
+    for col in X_train.columns:
+        if X_train[col].dtype == 'object' or X_train[col].dtype.name == 'category':
+            categorical_cols.append(col)
+    
+    numerical_cols = [col for col in X_train.columns if col not in categorical_cols]
+    
+    logger.info(f"Categorical columns found: {categorical_cols}")
+    logger.info(f"Numerical columns found: {numerical_cols}")
+    
+    # Create preprocessing transformer
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', StandardScaler(), numerical_cols),
+            ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), categorical_cols)
+        ],
+        remainder='passthrough'
+    )
+    
+    # Fit and transform the data
+    logger.info("Applying preprocessing transformations")
+    X_train_transformed = preprocessor.fit_transform(X_train)
+    X_val_transformed = preprocessor.transform(X_val)
+    X_test_transformed = preprocessor.transform(X_test)
+    
+    # Get feature names after transformation
+    num_feature_names = numerical_cols
+    
+    # Get categorical feature names after one-hot encoding
+    try:
+        if hasattr(preprocessor.transformers_[1][1], 'get_feature_names_out'):
+            cat_feature_names = preprocessor.transformers_[1][1].get_feature_names_out(categorical_cols)
+        else:
+            cat_feature_names = [f"{col}_{cat}" for col in categorical_cols 
+                               for cat in preprocessor.transformers_[1][1].categories_[categorical_cols.index(col)]]
+    except Exception as e:
+        logger.warning(f"Could not get categorical feature names: {e}")
+        cat_feature_names = [f"cat_{i}" for i in range(X_train_transformed.shape[1] - len(numerical_cols))]
+    
+    # Combine feature names
+    transformed_feature_names = list(num_feature_names) + list(cat_feature_names)
+    
+    # Convert transformed data back to DataFrames
+    X_train = pd.DataFrame(X_train_transformed, columns=transformed_feature_names, index=X_train.index)
+    X_val = pd.DataFrame(X_val_transformed, columns=transformed_feature_names, index=X_val.index)
+    X_test = pd.DataFrame(X_test_transformed, columns=transformed_feature_names, index=X_test.index)
+    
+    logger.info(f"Data shape after preprocessing: {X_train.shape}")
+    
     # Basic feature engineering
     X_train = create_interaction_features(X_train)
     X_train = compute_lipid_ratio(X_train)
@@ -156,6 +211,7 @@ def main():
         
         if numerical_subset:
             # Create polynomial features on subset
+            from sklearn.preprocessing import PolynomialFeatures
             poly_transformer = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
             
             # Fit and transform train set
@@ -208,9 +264,11 @@ def main():
     logger.info("STEP 4: Feature selection")
     
     # We'll use RFE for feature selection
+    print(X_train.shape)
     X_train_selected = select_features_with_rfe(
         X_train_resampled, y_train_resampled, 
-        min_features_to_select=max(10, X_train.shape[1] // 3)
+        cv=5, 
+        min_features_to_select=max(10, X_train.shape[1] // 5)
     )
     
     # Get selected features
