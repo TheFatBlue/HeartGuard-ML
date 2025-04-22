@@ -5,7 +5,10 @@ Feature engineering functions for heart disease prediction.
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import PolynomialFeatures, KBinsDiscretizer
 import logging
+
+from src.config import AGE_BANDS
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +164,125 @@ def compute_lipid_ratio(data):
     
     return result
 
+def create_age_bands(data):
+    """Creates age bands based on config."""
+    logger.info("Creating age bands")
+    if 'Age' in data.columns:
+        labels = [f"{low}-{high}" for low, high in AGE_BANDS]
+        bins = [b[0] for b in AGE_BANDS] + [AGE_BANDS[-1][1]]
+        data['Age_Band'] = pd.cut(data['Age'], bins=bins, labels=labels, right=False)
+        logger.info(f"Created Age_Band feature with bands: {labels}")
+    else:
+        logger.warning("Age column not found, cannot create age bands.")
+    return data
+
+def calculate_framingham_score(data):
+    """Placeholder function to calculate Framingham Risk Score."""
+    logger.info("Calculating Framingham Risk Score (Placeholder)")
+    # This requires specific coefficients based on gender, age, cholesterol, HDL, BP, smoking, diabetes.
+    # Implementation depends on the exact FRS version used.
+    # Returning a dummy score for now.
+    if all(col in data.columns for col in ['Age', 'Cholesterol Level', 'Blood Pressure', 'Smoking']):
+        # Example: Simplified score (NOT CLINICALLY VALID)
+        data['Framingham_Score_Est'] = (data['Age']/10 +
+                                       data['Cholesterol Level']/50 +
+                                       data['Blood Pressure']/20 +
+                                       data['Smoking'].map({'Yes': 1, 'No': 0}) * 2)
+        logger.info("Created Framingham_Score_Est feature (placeholder).")
+    else:
+         logger.warning("Required columns for Framingham Score not found.")
+    return data
+
+def calculate_ascvd_score(data):
+    """Placeholder function to calculate ASCVD Risk Score."""
+    logger.info("Calculating ASCVD Risk Score (Placeholder)")
+    # Requires specific coefficients based on race, gender, age, cholesterol, HDL, BP, diabetes, smoking.
+    # Implementation depends on the specific ASCVD Pooled Cohort Equations.
+    # Returning a dummy score for now.
+    if all(col in data.columns for col in ['Age', 'Cholesterol Level', 'Blood Pressure', 'Diabetes', 'Smoking']):
+         # Example: Simplified score (NOT CLINICALLY VALID)
+        data['ASCVD_Score_Est'] = (data['Age']/10 +
+                                   data['Cholesterol Level']/60 +
+                                   data['Blood Pressure']/15 +
+                                   data['Diabetes'].map({'Yes': 1, 'No': 0}) * 1.5 +
+                                   data['Smoking'].map({'Yes': 1, 'No': 0}) * 1.5)
+        logger.info("Created ASCVD_Score_Est feature (placeholder).")
+    else:
+        logger.warning("Required columns for ASCVD Score not found.")
+    return data
+
+def add_polynomial_features(data, numerical_features, degree=2):
+    """Generate polynomial features for specified numerical columns."""
+    logger.info(f"Generating polynomial features (degree={degree})")
+    poly = PolynomialFeatures(degree=degree, include_bias=False, interaction_only=False)
+    
+    # Select only specified numerical features that exist in the data
+    valid_numerical_features = [f for f in numerical_features if f in data.columns]
+    if not valid_numerical_features:
+        logger.warning("No valid numerical features found for polynomial feature generation.")
+        return data
+        
+    poly_features = poly.fit_transform(data[valid_numerical_features])
+    poly_feature_names = poly.get_feature_names_out(valid_numerical_features)
+
+    # Create a DataFrame with new features
+    poly_df = pd.DataFrame(poly_features, columns=poly_feature_names, index=data.index)
+
+    # Drop original columns used to create polynomial features to avoid multicollinearity
+    # (unless interaction_only=True was used, but here we allow powers too)
+    # Add only the NEW features (higher order and interactions)
+    new_feature_cols = [col for col in poly_feature_names if col not in valid_numerical_features]
+    data = pd.concat([data, poly_df[new_feature_cols]], axis=1)
+
+    logger.info(f"Added {len(new_feature_cols)} polynomial features.")
+    return data
+
+def map_feature_indices_to_names(engineered_features, original_features, transformer):
+    """Maps engineered feature indices back to human-readable names."""
+    # This is complex and highly dependent on the exact transformers used.
+    # The `get_feature_names_out` method of scikit-learn pipelines/transformers
+    # is the standard way. We already use this in `get_feature_names`.
+    logger.info("Mapping feature indices to names (using get_feature_names_out)")
+    # Assuming `transformer` is the fitted preprocessor or pipeline step
+    try:
+        if hasattr(transformer, 'get_feature_names_out'):
+            feature_names = transformer.get_feature_names_out()
+            return feature_names
+        else:
+            logger.warning("Transformer does not have 'get_feature_names_out'. Returning basic names.")
+            # Fallback or more specific logic needed here based on transformer type
+            return [f"feature_{i}" for i in range(engineered_features.shape[1])]
+    except Exception as e:
+        logger.error(f"Error getting feature names: {e}")
+        return [f"feature_{i}" for i in range(engineered_features.shape[1])]
+
+# Update get_feature_names function if necessary (current one seems reasonable)
 def get_feature_names(column_transformer):
+    """Get feature names from a column transformer."""
+    # ... (Keep existing implementation, it tries get_feature_names_out first)
+    # Ensure it handles polynomial features if they are added *before* the main preprocessor
+    logger.info("Extracting feature names using get_feature_names method")
+    try:
+        # Use get_feature_names_out which is preferred in modern scikit-learn
+        feature_names = list(column_transformer.get_feature_names_out())
+        logger.info(f"Successfully extracted {len(feature_names)} feature names via get_feature_names_out.")
+        return feature_names
+    except AttributeError:
+        logger.warning("'get_feature_names_out' not available, attempting manual extraction.")
+        # Fallback logic (keep existing or adapt as needed)
+        # ... (existing fallback logic) ...
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during feature name extraction: {e}")
+        # Fallback to generic names
+        # Determine the number of features by transforming a dummy row
+        try:
+            num_features = column_transformer.transform(pd.DataFrame(columns=column_transformer.feature_names_in_)).shape[1]
+        except:
+            num_features = 20 # Arbitrary fallback
+        logger.warning(f"Using {num_features} generic feature names as fallback.")
+        return [f"feature_{i}" for i in range(num_features)]
+
+def _get_feature_names(column_transformer):
     """
     Get feature names from a column transformer.
     
