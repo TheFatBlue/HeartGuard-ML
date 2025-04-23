@@ -87,12 +87,3 @@ def get_xgboost_feature_importance(model, feature_names):
     except Exception as e:
         logger.error(f"Error getting XGBoost feature importance: {e}")
         return pd.DataFrame({'Feature': feature_names, 'Importance': 0})
-
-# Note: Implementing custom loss functions requires defining callable functions
-# for the objective or evaluation metric, which is more advanced.
-# Using scale_pos_weight is the standard way to handle imbalance cost-sensitively in XGBoost.
-# Example of how scale_pos_weight could be set dynamically:
-# from sklearn.utils.class_weight import compute_sample_weight
-# count_neg, count_pos = np.bincount(y_train)
-# scale_pos_weight = count_neg / count_pos
-# xgb_params['scale_pos_weight'] = scale_pos_weight

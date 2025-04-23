@@ -72,7 +72,7 @@ def parse_arguments():
     parser.add_argument('--skip_eda', action='store_true',
                         help='Skip exploratory data analysis visualizations')
     parser.add_argument('--tune_models', action='store_true',
-                        help='Perform hyperparameter tuning for RF and XGBoost')
+                        help='Perform hyperparameter tuning for LR, RF and XGBoost')
     parser.add_argument('--run_cv', action='store_true', default=True, # Run CV by default
                         help='Run stratified cross-validation for model evaluation')
     parser.add_argument('--run_fairness', action='store_true',

@@ -72,13 +72,3 @@ def create_stacking_classifier(estimators, final_estimator=None, cv=5):
         n_jobs=-1
     )
     return ensemble
-
-# Example usage within main.py might involve:
-# log_pipe = create_logistic_model(...)
-# rf_pipe = create_random_forest_model(...)
-# xgb_pipe, _ = create_xgboost_model(...)
-# estimators = [('lr', log_pipe), ('rf', rf_pipe), ('xgb', xgb_pipe)]
-# voting_clf = create_voting_classifier(estimators, weights=[0.2, 0.4, 0.4])
-# stacking_clf = create_stacking_classifier(estimators)
-# voting_clf.fit(X_train, y_train)
-# stacking_clf.fit(X_train, y_train)

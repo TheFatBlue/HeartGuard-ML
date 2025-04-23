@@ -21,47 +21,41 @@ The target variable is `Heart Disease Status` (Yes/No) with an imbalanced class 
 
 ```
 heart_disease_prediction/
-│
-├── data/
-│   ├── raw/
-│   │   └── heart_disease.csv
-│   └── processed/
-│       └── heart_disease_cleaned.csv
-│
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   └── 02_model_evaluation.ipynb
-│
-├── src/
-│   ├── __init__.py
-│   ├── config.py              # Configuration parameters
-│   ├── data/
-│   │   ├── __init__.py
-│   │   ├── data_loader.py     # Functions to load data
-│   │   └── preprocessor.py    # Data preprocessing functions
-│   │
-│   ├── features/
-│   │   ├── __init__.py
-│   │   └── feature_engineering.py  # Feature transformation functions
-│   │
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── baseline.py        # Majority classifier implementation
-│   │   ├── logistic.py        # Logistic regression model
-│   │   └── random_forest.py   # Random forest model
-│   │
-│   ├── visualization/
-│   │   ├── __init__.py
-│   │   └── visualize.py       # Plotting functions for EDA and model evaluation
-│   │
-│   └── utils/
-│       ├── __init__.py
-│       ├── metrics.py         # Custom evaluation metrics
-│       └── imbalance.py       # Functions to handle class imbalance
-│
-├── main.py                    # Script to run the full pipeline
-├── requirements.txt           # Project dependencies
-└── README.md                  # Project documentation
+|
+├── main.py
+├── notebooks
+│   └── 01_data_exploration.ipynb
+├── README.md
+├── requirements.txt
+└── src
+    ├── __init__.py
+    ├── config.py
+    ├── data
+    │   ├── __init__.py
+    │   ├── data_loader.py
+    │   ├── download.py
+    │   ├── imputation.py
+    │   └── preprocessor.py
+    ├── features
+    │   ├── __init__.py
+    │   ├── advanced_features.py
+    │   └── feature_engineering.py
+    ├── models
+    │   ├── __init__.py
+    │   ├── baseline.py
+    │   ├── ensemble.py
+    │   ├── hyperparameter_tuning.py
+    │   ├── logistic.py
+    │   ├── random_forest.py
+    │   └── xgboost.py
+    ├── utils
+    │   ├── __init__.py
+    │   ├── fairness.py
+    │   ├── imbalance.py
+    │   └── metrics.py
+    └── visualization
+        ├── __init__.py
+        └── visualize.py
 ```
 
 ## Installation
@@ -97,6 +91,9 @@ Options:
 - `--test_size`: Proportion of data to use for testing (default: 0.2)
 - `--use_smote`: Use SMOTE for handling class imbalance
 - `--skip_eda`: Skip exploratory data analysis visualizations
+- `--tune_models`: Perform hyperparameter tuning for LR, RF and XGBoost
+- `--run_cv`: Run stratified cross-validation for model evaluation
+- `--run_fairness`: Run fairness analysis across demographic slices
 
 ### Exploring the Data
 
@@ -104,22 +101,6 @@ Open the Jupyter notebook for exploratory data analysis:
 ```bash
 jupyter notebook notebooks/01_data_exploration.ipynb
 ```
-
-## Models
-
-We implement and compare the following classification models:
-
-1. **Majority Classifier** (baseline): Always predicts the most frequent class (No Heart Disease)
-2. **Logistic Regression**: A linear model with interpretable coefficients
-3. **Random Forest**: An ensemble tree-based model that can capture non-linear relationships
-
-## Handling Class Imbalance
-
-Since heart disease cases represent only 20% of the dataset, we implement several strategies to handle class imbalance:
-
-1. **SMOTE**: Synthetic Minority Over-sampling Technique to generate synthetic samples of the minority class
-2. **Class weights**: Adjusting class weights to penalize misclassifications of the minority class more heavily
-3. **Threshold optimization**: Adjusting the probability threshold to maximize recall
 
 ## Evaluation Metrics
 
