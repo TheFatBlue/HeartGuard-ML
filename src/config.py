@@ -45,7 +45,7 @@ ALL_FEATURES = CATEGORICAL_FEATURES + NUMERICAL_FEATURES
 RANDOM_STATE = 42
 
 # Cross-validation parameters
-CV_FOLDS = 3
+CV_FOLDS = 5
 
 # Model hyperparameters
 LOGISTIC_REGRESSION_PARAMS = {
@@ -55,6 +55,13 @@ LOGISTIC_REGRESSION_PARAMS = {
     "class_weight": "balanced",
     "random_state": RANDOM_STATE,
     "max_iter": 1000
+}
+
+LOGISTIC_REGRESSION_GRID = {
+    'classifier__C': [0.01, 0.1, 1.0, 10.0, 100.0], # Explore a range of regularization strengths
+    'classifier__penalty': ['l1', 'l2'],
+    'classifier__solver': ['liblinear', 'saga'], # Solvers compatible with l1/l2
+    'classifier__class_weight': ['balanced', {0:1, 1:5}, {0:1, 1:10}] # Test different weighting schemes
 }
 
 RANDOM_FOREST_PARAMS = {
@@ -88,10 +95,10 @@ XGBOOST_PARAMS = {
 }
 
 RANDOM_FOREST_GRID = { # [cite: 2]
-    'classifier__n_estimators': [200, 500],
-    'classifier__max_depth': [10, 30, 50],     # Tune max depth
-    'classifier__min_samples_leaf': [1, 2, 4],    # Tune min samples leaf
-    'classifier__class_weight': ['balanced', 'balanced_subsample', {0:1, 1:5}, {0:1, 1:10}] # Tune class weight
+    # 'classifier__n_estimators': [200, 500],
+    'classifier__max_depth': [10, 50, None],     # Tune max depth
+    'classifier__min_samples_leaf': [2, 4],    # Tune min samples leaf
+    # 'classifier__class_weight': ['balanced', 'balanced_subsample', {0:1, 1:5}, {0:1, 1:10}] # Tune class weight
 }
 
 XGBOOST_GRID = { # [cite: 5]

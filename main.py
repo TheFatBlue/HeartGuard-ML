@@ -22,7 +22,7 @@ from src.config import (
     CATEGORICAL_FEATURES, NUMERICAL_FEATURES, RANDOM_STATE, CV_FOLDS,
     LOGISTIC_REGRESSION_PARAMS, RANDOM_FOREST_PARAMS, SMOTE_PARAMS,
     CV_FOLDS, XGBOOST_PARAMS, VOTING_WEIGHTS, SCORING, FAIRNESS_SLICES,
-    AGE_BANDS, F_BETA_SCORE_BETA, DEFAULT_MIN_PRECISION,
+    AGE_BANDS, F_BETA_SCORE_BETA, DEFAULT_MIN_PRECISION, LOGISTIC_REGRESSION_GRID,
     RANDOM_FOREST_GRID, XGBOOST_GRID, THRESHOLD_MIN_PRECISION_CONSTRAINTS
 )
 from src.data.data_loader import load_data, split_features_target, save_processed_data
@@ -36,7 +36,6 @@ from src.features.feature_engineering import (
 from src.models.baseline import MajorityClassifier
 from src.models.logistic import create_logistic_model, analyze_coefficients
 from src.models.random_forest import create_random_forest_model, get_feature_importance, analyze_tree_paths
-from src.utils.imbalance import apply_smote, get_class_weights, create_cost_sensitive_sample_weights
 from src.models.xgboost import create_xgboost_model, get_xgboost_feature_importance
 from src.models.ensemble import create_voting_classifier # Add Stacking if desired
 from src.utils.fairness import compute_slice_metrics, export_fairness_report
@@ -45,7 +44,6 @@ from src.visualization.visualize import (
     plot_feature_distributions, plot_correlation_heatmap, plot_feature_importance,
     plot_confusion_matrix, plot_roc_curve, plot_precision_recall_curve, plot_model_comparison
 )
-import matplotlib.pyplot as plt
 
 
 # Set up logging
@@ -97,7 +95,6 @@ def main():
     logger.info(f"Output directory: {output_dir}")
     
     # --- Step 1: Load and explore data (keep existing) ---
-    # ...
     logger.info("STEP 1: Data loading and exploration")
     data = load_data(data_path)
     quality_summary = check_data_quality(data)
@@ -183,7 +180,15 @@ def main():
     if args.tune_models:
         logger.info("STEP 7: Hyperparameter Tuning (Optional)")
         # tuning_scorer = make_scorer(recall_score, zero_division=0) # Tune based on recall
-        tuning_scorer = make_scorer(fbeta_score, beta=2, zero_division=0)
+        tuning_scorer = make_scorer(recall_score, zero_division=0)
+
+        # Tune Logistic Regression
+        logger.info("Tuning Logistic Regression...")
+        log_grid_search = GridSearchCV(log_pipe, LOGISTIC_REGRESSION_GRID, cv=StratifiedKFold(CV_FOLDS), scoring=tuning_scorer, n_jobs=-1, verbose=1)
+        log_grid_search.fit(X_train, y_train)
+        logger.info(f"Best Log Params: {log_grid_search.best_params_}")
+        logger.info(f"Best Log Recall Score: {log_grid_search.best_score_:.4f}")
+        log_pipe = log_grid_search.best_estimator_ # Use best pipeline
 
         # Tune Random Forest
         logger.info("Tuning Random Forest...")
@@ -427,18 +432,6 @@ def main():
 
     except Exception as e:
         logger.error(f"Error saving feature importance for {best_model_name}: {e}")
-
-
-    # --- Step 13: Reproducibility Notes ---
-    logger.info("\nSTEP 13: Reproducibility Notes")
-    logger.info("To reproduce these results:")
-    logger.info(f"1. Ensure all packages in 'requirements.txt' are installed (pip install -r requirements.txt)")
-    logger.info(f"2. Place the raw data at: {RAW_DATA_PATH}")
-    logger.info(f"3. Run this script: python main.py [options]")
-    logger.info(f"   Options used in this run: {vars(args)}")
-    logger.info("Consider adding a 'run_experiments.py' or similar script for full automation.")
-    logger.info("Ensure README.md is updated with setup, run instructions, and interpretation of results.")
-
 
     end_time = time.time()
     logger.info(f"Pipeline finished in {end_time - start_time:.2f} seconds.")
